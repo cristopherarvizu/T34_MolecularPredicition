@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+<!-- Container -->
+<div class="container mt-5">
+    <!-- Row justify-content-center -->
+    <div class="row justify-content-center">
+        <!-- col -->
+        <div class="col-md-6">
+            <!-- Card -->
+            <div class="card">
+
+                <!-- Card header -->
+                <div class="card-header text-center">
+                    <h4>Upload CSV File</h4>
+                </div>
+
+                <!-- Card body -->
+
+                <!-- Form -->
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="csvFile" class="form-label">Choose CSV file</label>
+                            <input type="file" class="form-control" id="csvFile" name="csv_file" required>
+                        </div>
+                        <div class="justify-content-center">
+                            <button type="submit" class="btn btn-primary">Upload</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

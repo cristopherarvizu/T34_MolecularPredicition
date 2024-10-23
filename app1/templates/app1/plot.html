@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+<!-- Container -->
+<div class="container mt-5">
+    <!-- Row -->
+
+    <div class="row justify-content-center" >
+        <!-- Col -->
+        <div class="col-md-6">
+            <form class="form">
+                {% csrf_token %}
+                <select class="form-control" id="plotType">
+                    <option class="input" value="predVsExp">Predicted Vs Experimental</option>
+                    <option class="input" value="ceteneDis">Cetene No. Distribution</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <br><br><br><br>
+
+    <div class="row justify-content-center" >
+
+        <!-- Col -->
+        <div class="col-md-6">
+            <canvas id="myChart" width="200" height="150"></canvas>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Create plot with data and plotType 
+    function createChart(data, plotType) {
+
+        // Obtain canvas object by id
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        let chartConfig;
+
+
+        if (plotType === "predVsExp") {
+    // Data for regression
+    const xValues = data.CN_literature;
+    const yValues = data.CN_predicted;
+
+    // Helper function to calculate the regression line (slope and intercept)
+    function linearRegression(x, y) {
+        const n = x.length;
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = y.reduce((a, b) => a + b, 0);
+        const sumXY = x.map((xi, i) => xi * y[i]).reduce((a, b) => a + b, 0);
+        const sumX2 = x.map(xi => xi * xi).reduce((a, b) => a + b, 0);
+
+        // Slope (m) and intercept (b)
+        const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const b = (sumY - m * sumX) / n;
+
+        return { m, b };
+    }
+
+    // Calculate regression parameters
+    const { m, b } = linearRegression(xValues, yValues);
+
+    // Calculate R^2
+    function calculateR2(x, y, m, b) {
+        const meanY = y.reduce((a, b) => a + b, 0) / y.length;
+        const ssTot = y.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
+        const ssRes = y.reduce((sum, yi, i) => sum + Math.pow(yi - (m * x[i] + b), 2), 0);
+        return 1 - ssRes / ssTot;
+    }
+    const r2 = calculateR2(xValues, yValues, m, b);
+
+    // Generate only two points for the regression line: min and max x-values
+    const minX = Math.min(...xValues);
+    const maxX = Math.max(...xValues);
+    const regressionLine = [
+        { x: minX, y: m * minX + b },
+        { x: maxX, y: m * maxX + b }
+    ];
+
+    // Create chart configuration
+    chartConfig = {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Z Experimental vs Z Predicted',
+                    data: data.CN_literature.map((z, i) => ({ x: z, y: data.CN_predicted[i] })),
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                },
+                {
+                    label: `Regression Line (R² = ${r2.toFixed(3)})`,
+                    data: regressionLine, // Only start and end points for the line
+                    type: 'line',
+                    fill: false,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    tension: 0.0 // Straight line
+                }
+            ]
+        },
+        options: {
+            scales: {
+                x: { type: 'linear', position: 'bottom', title: { display: true, text: 'CN Experimental' } },
+                y: { title: { display: true, text: 'CN Predicted' } },
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const label = context.dataset.label || '';
+                            if (label) {
+                                return `${label}: (${context.raw.x.toFixed(2)}, ${context.raw.y.toFixed(2)})`;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+        else if (plotType === "ceteneDis") {
+            // Create chart configuration: (type, data: (labels, datasets: (label, data, backgroundColor, borderColor)), options)
+            chartConfig = {
+                type: 'bar',
+                data: {
+                    labels: data.cetene_bins.map(bin => `${bin[0]} - ${bin[1]}`), // Convert ranges to label format
+                    datasets: [{
+                        label: 'Cetene Number Distribution',
+                        data: data.frequencies, // Use the calculated frequencies for the y-axis
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: { title: { display: true, text: 'Cetene Number Ranges' } },
+                        y: { title: { display: true, text: 'Frequency' } },
+                    }
+                }
+            };
+        }
+
+
+        // Destroy previous chart instance if it exists
+        if (window.myChart instanceof Chart) {
+            window.myChart.destroy();
+        }
+
+        // Create new chart
+        window.myChart = new Chart(ctx, chartConfig);
+    }
+
+    // Fetch data and update chart based on plotType
+    function updateChart() {
+
+        // Get plotType value 
+        const plotType = document.getElementById('plotType').value;
+
+        // Request data, you need the plotType 
+        fetch(`/chart_data/${plotType}/`)
+            .then(response => response.json())
+            .then(data => {
+                createChart(data, plotType);
+            });
+    }
+
+    // Event listener for plotType change
+    document.getElementById('plotType').addEventListener('change', updateChart);
+
+    // Initial chart load
+    updateChart();
+</script>
+
+
+{% endblock %}

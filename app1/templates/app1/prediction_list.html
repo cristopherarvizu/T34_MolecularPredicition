@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+
+{% block styles %}
+
+<style>
+    .full-height {
+        height: 100%;
+    }
+
+    .table-container {
+        height: 500px;
+        width: 100%;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center table-container">
+        <div class="col-md-2 ">
+            <form class="form mt-5" method="GET" action="{% url 'prediction_list' %}">
+                <div class="form-group">
+                    <label for="id_name">Name:</label>
+                    <input class="form-control" type="text" name="name" maxlength="255" id="id_name" value="{{ request.GET.name|default:'' }}" autocomplete="off">
+                </div>
+
+                <br><br>
+            
+                <div class="form-group">
+                    <label for="id_class_field">Class:</label>
+                    <select class="form-control" name="class_field" id="id_class_field">
+                        <!-- Lista de clases -->
+                        <option value="">-- Select --</option>
+                        {% for class in classes %}
+                            <option value="{{ class }}" {% if request.GET.class_field == class %}selected{% endif %}>{{ class }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <br><br>
+            
+                <div class="form-group">
+                    <label for="id_order_by">Order by:</label>
+                    <select class="form-control" name="order_by" id="id_order_by">
+                        <option value="">-- Select --</option>
+                        <option value="CN_literature" {% if request.GET.order_by == "CN_literature" %}selected{% endif %}>CN Literature</option>
+                        <option value="CN_predicted" {% if request.GET.order_by == "CN_predicted" %}selected{% endif %}>CN Predicted</option>
+                    </select>
+                </div>
+
+                <br><br>
+                
+                <br>
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </form>
+        </div>
+        <div class="col-md-10 full-height">
+            <table class="table table-striped table-hover full-height">
+                <thead class="table-dark">
+                    <tr>
+                        <!-- <th scope="col">ID</th> -->
+                        <th scope="col">Name</th>
+                        <th scope="col">Class</th>
+                        <th scope="col">CN Literature</th>
+                        <th scope="col">CN Predicted</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prediction in predictions %}
+                    <tr tr data-bs-toggle="modal" data-bs-target="#myModal" 
+                    data-image-url="{{ prediction.image.url }}"
+                    data-smiles="{{ prediction.SMILES }}"
+                    >
+                        <!-- <td>{{ prediction.id }}</td> -->
+                        <td>{{ prediction.Name|truncate_chars:10 }}</td>
+                        <td>{{ prediction.Class|truncate_chars:10 }}</td>
+                        
+                        <td>{{ prediction.CN_literature }}</td>
+                        <td>{{ prediction.CN_predicted }}</td>
+                        
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <div class="row justify-content-center mt-3">
+        <div class="col-md-6 offset-md-5">
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}{% if request.GET.class_field %}&class_field={{ request.GET.class_field }}{% endif %}{% if request.GET.formula %}&formula={{ request.GET.formula }}{% endif %}{% if request.GET.order_by %}&order_by={{ request.GET.order_by }}{% endif %}" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}{% if request.GET.class_field %}&class_field={{ request.GET.class_field }}{% endif %}{% if request.GET.formula %}&formula={{ request.GET.formula }}{% endif %}{% if request.GET.order_by %}&order_by={{ request.GET.order_by }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}{% if request.GET.class_field %}&class_field={{ request.GET.class_field }}{% endif %}{% if request.GET.formula %}&formula={{ request.GET.formula }}{% endif %}{% if request.GET.order_by %}&order_by={{ request.GET.order_by }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ paginator.num_pages }}{% if request.GET.name %}&name={{ request.GET.name }}{% endif %}{% if request.GET.class_field %}&class_field={{ request.GET.class_field }}{% endif %}{% if request.GET.formula %}&formula={{ request.GET.formula }}{% endif %}{% if request.GET.order_by %}&order_by={{ request.GET.order_by }}{% endif %}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Structure -->
+<!-- Modal Structure -->
+<div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Molecule Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-column justify-content-center align-items-center" style="height: 100%;">
+                    <!-- Image container -->
+                     <p>Molecule Structure</p>
+                    <div id="image-container"></div>
+
+                    <!-- SMILES container -->
+                     <p>SMILES</p>
+                    <div id="smiles-container" class="mt-1"></div> <!-- Optional margin for spacing -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+ 
+ // This function will be triggered when the table row is clicked
+document.querySelectorAll('tr[data-bs-toggle="modal"]').forEach(function(row) {
+    row.addEventListener('click', function() {
+        // Get the image URL and other prediction data from the clicked row
+        const imageUrl = row.getAttribute('data-image-url');
+        
+        
+
+        // Set the modal content (image, title, etc.)
+        let imageContainer = document.getElementById('image-container');
+        imageContainer.innerHTML = '';  // Clear previous content
+
+        let image = document.createElement("img");
+        image.src = imageUrl;
+        image.alt = "Molecule Image";
+        image.style.maxWidth = "100%";
+        imageContainer.appendChild(image);
+
+        // Optionally set other modal fields if you want (e.g., name, class, formula)
+        const simles = row.getAttribute('data-smiles');
+        let smilesContainer = document.getElementById('smiles-container');
+        smilesContainer.innerHTML = simles;
+    });
+});
+
+
+</script>
+
+{% endblock %}
